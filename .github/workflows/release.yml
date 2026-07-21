@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Derive version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble mod package
+        run: |
+          mkdir -p CampDepositReloaded/Scripts
+          cp src/main.lua CampDepositReloaded/Scripts/main.lua
+          touch CampDepositReloaded/enabled.txt
+          zip -r "CampDepositReloaded-${{ steps.version.outputs.version }}.zip" CampDepositReloaded/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: "CampDepositReloaded-${{ steps.version.outputs.version }}.zip"
+          generate_release_notes: true

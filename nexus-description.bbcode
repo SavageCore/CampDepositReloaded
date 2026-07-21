@@ -1,0 +1,46 @@
+[b]CampDepositReloaded[/b] - Deposit Similar, Extended to Nearby Chests
+
+A from-scratch, open reimplementation of [url=https://www.nexusmods.com/windrose/mods/445]Skiprhax's Camp Deposit[/url]. The original appears unmaintained and hardcodes byte offsets for one exact game build, so it breaks on every update. This rewrite drives the same game logic through Unreal's reflection system instead, so it isn't tied to any specific build.
+
+Press Q (Deposit Similar) on one chest, and every other chest within range gets the same treatment - exactly as if you'd looked at each one and pressed Deposit Similar yourself. It is not an auto-sorter: it doesn't choose categories or send items into empty chests, it only extends the game's own "move items whose type already exists in the target" logic to nearby chests.
+
+[b]Features[/b]
+- Extends vanilla Deposit Similar to every chest within a configurable radius
+- Works in singleplayer, self-hosted co-op (Host Game/Listen server), and on a dedicated server
+- Server-side only - like the original mod, nothing to install on clients if using on a dedicated server.
+- No new menu, no new hotkey - it rides the existing Deposit Similar action
+
+[b]Requirements[/b]
+- [url=https://github.com/UE4SS-RE/RE-UE4SS]UE4SS[/url] - experimental-latest release
+- In UE4SS-settings.ini, set [EngineVersionOverride] to MajorVersion = 5, MinorVersion = 6
+- Linux/Proton users: add launch option WINEDLLOVERRIDES="dwmapi=n,b" %command%
+
+[b]Installation[/b]
+Install wherever the game's authoritative server logic actually runs - not on clients.
+
+1. Dedicated server: install into that server's own R5\Binaries\Win64.
+2. Singleplayer: install into your normal game install (R5\Binaries\Win64) - the single process is its own authority.
+3. Host Game (listen server via invite code): hosting spins up a [i]separate[/i] WindroseServer-Win64-Shipping.exe process from R5\Builds\WindowsServer\R5\Binaries\Win64 - a self-hosted dedicated server running alongside your normal client. That is where the deposit is actually authoritative, not your visible game client. Install UE4SS and this mod there too, or Host Game deposits will silently do nothing.
+
+For each install location:
+1. Install UE4SS: extract dwmapi.dll and the ue4ss folder into R5\Binaries\Win64 (or the server path above).
+2. Set the engine version override in UE4SS-settings.ini as above.
+3. Download the latest CampDepositReloaded release and extract it into .../ue4ss/Mods/, so you end up with:
+ue4ss/Mods/CampDepositReloaded/
+├── enabled.txt
+└── Scripts/
+&nbsp; &nbsp; └── main.lua
+4. Launch the game.
+
+[b]Config[/b]
+Settings live in CampDepositReloaded.cfg.lua, next to the installed main.lua (created on first edit):
+[code]return {
+    enabled = true,
+    radiusMeters = 48.0,
+    maxAttempts = 16,
+    runtimeLogging = true,
+    debug = false,
+}[/code]
+
+[b]Credits / License[/b]
+Created by SavageCore. MIT licensed. Source on GitHub: https://github.com/SavageCore/CampDepositReloaded

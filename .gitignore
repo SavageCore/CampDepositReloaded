@@ -1,0 +1,6 @@
+build/
+CampDepositReloaded.cfg.lua
+
+# Original mod (reference only, not ours to distribute) and our RE notes on it
+/ZSkiprhaxCampDeposit/
+/reverse-engineering/
