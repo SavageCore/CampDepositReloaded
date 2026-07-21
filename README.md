@@ -2,6 +2,8 @@
 
 A from-scratch, open reimplementation of [Skiprhax's Camp Deposit](https://www.nexusmods.com/windrose/mods/445) for [Windrose](https://store.steampowered.com/app/3041230/Windrose/), as a [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS) Lua mod instead of a version-locked native DLL. The original appears unmaintained and hardcodes byte offsets for one exact game build, so it breaks on every update. This rewrite drives the same game logic through Unreal's reflection system instead, so it isn't tied to any specific build.
 
+![Preview](assets/preview.png)
+
 ## What it does
 
 Press Q (Deposit Similar) on one chest, and every other chest within range gets the same treatment - exactly as if you'd looked at each one and pressed Deposit Similar yourself.
