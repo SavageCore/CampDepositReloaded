@@ -12,8 +12,13 @@ Press Q (Deposit Similar) on one chest, and every other chest within range gets 
 
 [b]Requirements[/b]
 - [url=https://github.com/UE4SS-RE/RE-UE4SS]UE4SS[/url] - experimental-latest release
-- In UE4SS-settings.ini, set [EngineVersionOverride] to MajorVersion = 5, MinorVersion = 6
-- Linux/Proton users: add launch option WINEDLLOVERRIDES="dwmapi=n,b" %command%
+- In UE4SS-settings.ini, set
+[code][EngineVersionOverride]
+MajorVersion = 5
+MinorVersion = 6[/code]
+
+- Linux/Proton users: Set launch option to
+[code]WINEDLLOVERRIDES="dwmapi=n,b" %command%[/code]
 
 [b]Installation[/b]
 Install wherever the game's authoritative server logic actually runs - not on clients.
@@ -29,18 +34,20 @@ For each install location:
 ue4ss/Mods/CampDepositReloaded/
 ├── enabled.txt
 └── Scripts/
-&nbsp; &nbsp; └── main.lua
+    └── main.lua
 4. Launch the game.
 
 [b]Config[/b]
 Settings live in CampDepositReloaded.cfg.lua, next to the installed main.lua (created on first edit):
 [code]return {
-    enabled = true,
-    radiusMeters = 48.0,
-    maxAttempts = 16,
-    runtimeLogging = true,
-    debug = false,
+enabled = true,
+radiusMeters = 48.0,
+maxAttempts = 16,
+runtimeLogging = true,
+debug = false,
 }[/code]
 
 [b]Credits / License[/b]
-Created by SavageCore. MIT licensed. Source on GitHub: https://github.com/SavageCore/CampDepositReloaded
+Created by SavageCore. MIT licensed. 
+
+Source on GitHub: [url]https://github.com/SavageCore/CampDepositReloaded[/url]
