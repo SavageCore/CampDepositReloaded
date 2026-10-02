@@ -13,6 +13,7 @@ Press Q (Deposit Similar) on one chest, and every other chest within range gets 
 - No new menu, no new hotkey - it rides the existing Deposit Similar action
 
 [i]0.1.1 fixes reports that doors and windows closed again when opened, that the server lagged on large bases, and that a deposit straight after looting sometimes did nothing.[/i]
+[i]0.1.2 fixes a silent no-op introduced in 0.1.1: camp-scoped targeting could find no targets at all on a camp whose chests were restored from a save, leaving the mod doing nothing. It now falls back to searching by radius and says so in the log. Also removes a redundant chest scan on every Deposit Similar.[/i]
 
 [b]Requirements[/b]
 - [url=https://github.com/UE4SS-RE/RE-UE4SS]UE4SS[/url] - experimental-latest release

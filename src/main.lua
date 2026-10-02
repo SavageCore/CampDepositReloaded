@@ -1,6 +1,6 @@
 -- CampDepositReloaded: extends vanilla "Deposit Similar" to nearby camp
 -- chests. Server-side mod - no client install needed.
-local VERSION = "0.1.1"
+local VERSION = "0.1.2"
 local UEHelpers = require("UEHelpers")
 
 local CONFIG_PATH = (debug.getinfo(1, "S").source:match("^@?(.*[/\\])") or "") .. "CampDepositReloaded.cfg.lua"
