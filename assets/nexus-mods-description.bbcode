@@ -5,9 +5,11 @@ A from-scratch, open reimplementation of [url=https://www.nexusmods.com/windrose
 Press Q (Deposit Similar) on one chest, and every other chest within range gets the same treatment - exactly as if you'd looked at each one and pressed Deposit Similar yourself. It is not an auto-sorter: it doesn't choose categories or send items into empty chests, it only extends the game's own "move items whose type already exists in the target" logic to nearby chests.
 
 [b]Features[/b]
-- Extends vanilla Deposit Similar to every chest within a configurable radius
-- Works in singleplayer, self-hosted co-op (Host Game/Listen server), and on a dedicated server
-- Server-side only - like the original mod, nothing to install on clients if using on a dedicated server.
+- Extends vanilla Deposit Similar to the other chests in the same camp
+- Only ever fires on Deposit Similar itself - opening a chest, looting it, or opening a door or window is left completely alone
+- Spreads its work across frames instead of stalling the server, and rate-limits itself per player
+- Works in singleplayer, self-hosted co-op (Host Game/listen server), and on a dedicated server
+- Server-side only - like the original mod, nothing to install on clients if using on a dedicated server
 - No new menu, no new hotkey - it rides the existing Deposit Similar action
 
 [b]Requirements[/b]
@@ -38,14 +40,23 @@ ue4ss/Mods/CampDepositReloaded/
 4. Launch the game.
 
 [b]Config[/b]
-Settings live in CampDepositReloaded.cfg.lua, next to the installed main.lua (created on first edit):
+Settings live in CampDepositReloaded.cfg.lua, next to the installed main.lua (created on first edit). Every key below is optional:
 [code]return {
 enabled = true,
-radiusMeters = 48.0,
-maxAttempts = 16,
+radiusMeters = 48.0,      -- search radius; only used when a chest has no camp
+maxAttempts = 16,         -- cap on chests per Deposit Similar
+chestsPerTick = 4,        -- max replays per frame
+campScoped = true,        -- only the origin chest's camp
+interactRangeMeters = 6.0,-- origin chest must be this close to you
+debounceSeconds = 1.0,    -- min gap between fan-outs per player
 runtimeLogging = true,
-debug = false,
+debug = false,            -- verbose tracing for troubleshooting
 }[/code]
+
+[i]Every log line ends with the interaction that caused it, e.g.[/i]
+[code]replayed deposit into 6 of 6 nearby chest(s) [GA_InteractOption_DepositSimilar_C][/code]
+
+[i]If the mod ever stops extending deposits after a game update, UE4SS.log says so once and names the option classes it did see - add the new name to depositOptionClasses in the config.[/i]
 
 [b]Credits / License[/b]
 Created by SavageCore. MIT licensed. 

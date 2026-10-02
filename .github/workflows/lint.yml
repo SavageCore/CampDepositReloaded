@@ -11,3 +11,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: lunarmodules/luacheck@v1
+
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.3"
+      # Stubs UE4SS and drives main.lua: the identity gate, the per-replay owner
+      # pointer restore, camp scoping and the stale-class warning.
+      - name: Run test harness
+        run: make test
+      # A renamed option class must not leave the mod silently inert.
+      - name: Run test harness with a stale option allowlist
+        run: make test DEPOSIT_CLASSES_STALE=1
