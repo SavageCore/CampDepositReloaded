@@ -70,7 +70,13 @@ end
 
 _G.RegisterHook = function(path, pre, post) hooks[path] = { pre = pre, post = post } end
 _G.NotifyOnNewObject = function(classPath, cb) newObjectHooks[classPath] = cb end
-_G.RegisterCustomProperty = function() return true end
+-- Counted: a launch-time fatal was reported, and these registrations used to be
+-- the mod's entire load path.
+_G.__customPropertyCalls = 0
+_G.RegisterCustomProperty = function()
+    _G.__customPropertyCalls = _G.__customPropertyCalls + 1
+    return true
+end
 _G.PropertyTypes = { Int64Property = 1 }
 local CAMP_CHEST_CLASS = "R5LootableInventoryBox"
 _G.__findAllCalls = _G.__findAllCalls or {}
@@ -195,6 +201,9 @@ _G.print = realPrint
 if not loaded then print("LOAD FAILED: " .. tostring(loadErr)) os.exit(1) end
 print("load ok")
 
+-- Recorded here, asserted below: check() is defined after the mod is loaded.
+local loadTimeProbeRegistrations = _G.__customPropertyCalls
+
 --------------------------------------------------------------------- driving
 local hook = hooks["/Script/GameplayAbilities.AbilitySystemComponent:ServerSetReplicatedTargetData"]
 assert(hook, "main hook not registered")
@@ -252,7 +261,13 @@ local function interact(className, deltaSeconds)
 end
 
 --------------------------------------------------------------------- scenarios
--- 0. Cost model. The perf report was "the server lags for a few seconds". What is
+-- 0. Launch footprint. A launch-time fatal was reported, and registering the
+--    component probes used to be the mod's entire load path. What remains there is
+--    a hook and one object notification.
+check("no component probes registered at load", loadTimeProbeRegistrations == 0,
+    string.format("%d registration(s) during load", loadTimeProbeRegistrations))
+
+-- 0b. Cost model. The perf report was "the server lags for a few seconds". What is
 --    provable without a server is the shape of the work: a blocked interaction
 --    must not sweep the chest list at all, and a deposit must sweep it once.
 resetSweeps()
@@ -396,6 +411,9 @@ delays = realDelay
 -- each, so frames = ceil(replays / chestsPerTick).
 local perTick = tonumber(os.getenv("CHESTS_PER_TICK") or "4")
 local expectedFrames = math.ceil(16 / perTick)
+check("component probes are registered on first use", _G.__customPropertyCalls > 0,
+    string.format("%d registration(s) after the first deposit", _G.__customPropertyCalls))
+
 check("warehouse deposit is capped and chunked",
     ascCalls == 16 and chestSweeps() == 1 and chunks == expectedFrames - 1,
     string.format("%d replays over %d frames at %d/frame (1 inline + %d deferred), %d sweep(s) over 122 chests",

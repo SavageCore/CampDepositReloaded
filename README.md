@@ -29,7 +29,7 @@ The destination chest turns out to be resolved through the interact target compo
 
 Step 3 is per chest, not per fan-out, and the pointer is never left lying between frames. Anything else the engine processes in that window - another player's interaction, the game's own tick - would otherwise resolve its destination through it.
 
-The owner pointer's byte offset isn't a fixed constant in the mod - it's discovered at runtime by scanning `UActorComponent`'s memory for a pointer back to the chest, so an offset shift on a future game update degrades to "the mod logs a warning and does nothing" rather than silently corrupting memory.
+The owner pointer's byte offset isn't a fixed constant in the mod - it's discovered at runtime by scanning `UActorComponent`'s memory for a pointer back to the chest, so an offset shift on a future game update degrades to "the mod logs a warning and does nothing" rather than silently corrupting memory. Those scan properties are registered on the first deposit rather than at load: what the mod does while the game starts should be a hook and one object notification, not 31 property registrations that could collide with another mod.
 
 The origin chest itself is approximated as the chest nearest the depositing player, since the replicated payload doesn't expose it directly - true whenever the player deposits at point-blank range, which vanilla Deposit Similar always requires anyway.
 

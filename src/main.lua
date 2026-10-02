@@ -204,6 +204,18 @@ local function registerProbes()
     end
 end
 
+-- Registered on first use rather than at load. These custom properties were this
+-- mod's entire launch-time footprint, and a launch-time fatal was reported
+-- against a build whose whole load path was "register these properties, register
+-- one hook". Doing it lazily means a property registration that conflicts with
+-- another mod can no longer stop the game reaching the world select screen, and
+-- it costs one pass the first time a deposit actually happens.
+local function ensureProbes()
+    if probesRegistered then return true end
+    registerProbes()
+    return probesRegistered
+end
+
 local function readCompProbe(comp, ofs)
     local ok, v = pcall(function() return comp[string.format("CDR_CompProbe_%X", ofs)] end)
     if not ok then return nil end
@@ -684,6 +696,7 @@ local function runMultipass(asc, pAbilityHandle, pOrigKey, pTargetData, pAppTag,
     if config.debug then
         trace("origin chest %.1fm from player, %s", originDist / 100.0, describeCamp(origin))
     end
+    if not ensureProbes() then return bail("probes-unavailable") end
     local offsets = findOwnerOffsets(comp, originAddr)
     if #offsets == 0 then
         count("skip:no-owner-offset")
@@ -832,28 +845,27 @@ local function registerDebugDiagnostics()
 end
 
 if config.enabled then
-    registerProbes()
     -- Armed unconditionally: this is the mod's interaction-identity signal, not a
     -- diagnostic. It costs one cached class-name lookup per interaction.
     pcall(function() registerInteractOptionCapture() end)
     if config.debug then registerDebugDiagnostics() end
-    if probesRegistered then
-        RegisterHook(
-            "/Script/GameplayAbilities.AbilitySystemComponent:ServerSetReplicatedTargetData",
-            function() end,
-            function(context, pAbilityHandle, pOrigKey, pTargetData, pAppTag, pCurKey)
-                count("hook-observed")
-                if inMultipass then
-                    count("own-replay")
-                    return
-                end
-                local ok, err = pcall(function()
-                    runMultipass(context:get(), pAbilityHandle, pOrigKey, pTargetData, pAppTag, pCurKey)
-                end)
-                if not ok then log("multipass error: %s", tostring(err)) end
+    -- Registered unconditionally: the hook is what discovers it needs the
+    -- component probes, so it has to be in place before any of them exist.
+    RegisterHook(
+        "/Script/GameplayAbilities.AbilitySystemComponent:ServerSetReplicatedTargetData",
+        function() end,
+        function(context, pAbilityHandle, pOrigKey, pTargetData, pAppTag, pCurKey)
+            count("hook-observed")
+            if inMultipass then
+                count("own-replay")
+                return
             end
-        )
-    end
+            local ok, err = pcall(function()
+                runMultipass(context:get(), pAbilityHandle, pOrigKey, pTargetData, pAppTag, pCurKey)
+            end)
+            if not ok then log("multipass error: %s", tostring(err)) end
+        end
+    )
     log("v%s loaded - radius %.0fm, max attempts %d, %d/tick, replayMode %s, %s gate%s",
         VERSION, config.radiusMeters, config.maxAttempts, config.chestsPerTick,
         config.replayMode, config.failClosed and "fail-closed" or "permissive",
