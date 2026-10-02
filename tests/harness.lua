@@ -365,7 +365,7 @@ end
 -- 10. Warehouse scale: report #1 came from a base with ~122 chests. The total
 --     work of a genuine deposit is unchanged by frame slicing, so assert the
 --     bounds rather than a wall-clock time: capped replays, chunked, one sweep.
-local savedChests, savedCenters = _G.__chests, _G.__centers
+local warehouseSavedChests, warehouseSavedCenters = _G.__chests, _G.__centers
 local warehouse = {}
 for i = 1, 122 do warehouse[i] = makeChest(i * 100, 0, 0, 1) end
 local allIds = {}
@@ -401,7 +401,45 @@ check("warehouse deposit is capped and chunked",
     string.format("%d replays over %d frames at %d/frame (1 inline + %d deferred), %d sweep(s) over 122 chests",
         ascCalls, expectedFrames, perTick, chunks, chestSweeps()))
 
-_G.__chests, _G.__centers = savedChests, savedCenters
+_G.__chests, _G.__centers = warehouseSavedChests, warehouseSavedCenters
+
+-- 11. "Possible initialization bug with existing chests" (report #3): the origin
+--     belongs to a camp whose membership does not list the chests in range - the
+--     shape a save-restored camp can present before the building centre has
+--     registered its chests. Camp scoping must not silently swallow the deposit.
+--     Fresh chests and a fresh avatar, so neither the camp cache nor the
+--     per-player cooldown from earlier scenarios can mask the result.
+local savedChests, savedCenters, savedAvatar = _G.__chests, _G.__centers, asc.AvatarActor
+local freshOrigin = makeChest(900000, 0, 0, 900)
+local freshSibling = makeChest(903000, 0, 0, 901) -- 30 m, inside the radius
+_G.__chests = { freshOrigin, freshSibling }
+-- The centre claims the origin (node 900) but not the sibling (node 901): the
+-- camp resolved for the origin chest, while the other chest is not registered yet.
+_G.__centers = { obj({ StorageCenter = obj({
+    BuildingGraphIds = obj({ Contains = function(_, id) return id == 900 end }),
+}) }) }
+asc.AvatarActor = obj({
+    GetAddress = function() return 0xABC0FF end,
+    K2_GetActorLocation = function() return fakeVec(900050, 0, 0) end,
+})
+
+ascCalls = 0
+clock = clock + 3
+local warningsSeen = 0
+_G.print = function(...)
+    local parts = {}
+    for i = 1, select("#", ...) do parts[#parts + 1] = tostring((select(i, ...))) end
+    local line = table.concat(parts)
+    if line:find("belongs to the origin's camp") then warningsSeen = warningsSeen + 1 end
+    realPrint(line)
+end
+interact("GA_InteractOption_DepositSimilar_C")
+_G.print = realPrint
+check("unclaimed camp falls back to radius instead of doing nothing",
+    ascCalls == 1 and warningsSeen == 1,
+    string.format("%d replay(s), %d warning(s)", ascCalls, warningsSeen))
+
+_G.__chests, _G.__centers, asc.AvatarActor = savedChests, savedCenters, savedAvatar
 
 --------------------------------------------------------------------- result
 local failed = 0

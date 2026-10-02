@@ -41,6 +41,15 @@ local function trace(fmt, ...)
     if config.debug then log("[debug] " .. fmt, ...) end
 end
 
+-- Warnings that must not repeat on every interaction, but must not be missed
+-- either - one line each, then silence.
+local loggedOnce = {}
+local function logOnce(key, fmt, ...)
+    if loggedOnce[key] then return end
+    loggedOnce[key] = true
+    log(fmt, ...)
+end
+
 local function loadConfig()
     local f = io.open(CONFIG_PATH, "r")
     if not f then return end
@@ -706,12 +715,28 @@ local function runMultipass(asc, pAbilityHandle, pOrigKey, pTargetData, pAppTag,
                     targets[#targets + 1] = candidate.box
                 end
             end
+            -- The origin belongs to a camp but nothing in range claims it. This is
+            -- the shape of the "possible initialization bug with existing chests"
+            -- report: chests restored from a save can sit outside their camp's
+            -- BuildingGraphIds until the building centre has registered them.
+            -- Silently finding no targets is the one outcome nobody can diagnose,
+            -- so fall back to the radius and say so.
+            if #targets == 0 and #candidates > 1 then
+                count("camp-membership-unknown")
+                logOnce("camp-membership",
+                    "no chest in range belongs to the origin's camp (%s); falling back to "
+                        .. "radius - chests restored from a save may not be registered with "
+                        .. "their building centre yet",
+                    classNameOf(storageCenter))
+            end
         else
             count("camp-unknown")
             trace("no building centre for this chest, falling back to radius")
         end
     end
-    if #targets == 0 and not storageCenter then
+    -- Radius fallback whenever camp scoping produced nothing but the sweep did
+    -- find other chests. candidates includes the origin, hence > 1.
+    if #targets == 0 and #candidates > 1 then
         for _, candidate in ipairs(candidates) do
             if not sameObject(candidate.box, origin) then targets[#targets + 1] = candidate.box end
         end

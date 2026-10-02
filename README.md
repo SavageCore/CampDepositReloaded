@@ -60,7 +60,7 @@ A fan-out is the most expensive thing this mod does, and it must never be able t
 - **`debounceSeconds` is stamped when a fan-out _starts_**, not when an interaction is seen, so the many interactions that reach the hook cannot consume the window a real Deposit Similar needs. This is what made a deposit straight after looting silently do nothing.
 - **One fan-out at a time.** Interactions arriving mid-fan-out are rejected immediately, before any scanning. A fan-out whose frames never arrive is abandoned after five seconds rather than wedging the mod.
 
-Targets are limited to the origin chest's own camp when the camp has a building centre (`campScoped`), because Deposit Similar is a per-container action and two camps can easily sit inside one radius; `radiusMeters` remains the fallback for chests with no building centre.
+Targets are limited to the origin chest's own camp when the camp has a building centre (`campScoped`), because Deposit Similar is a per-container action and two camps can easily sit inside one radius. `radiusMeters` is the fallback in two cases: the chest has no building centre at all, or the centre does not list the chests in range - which is what a save-restored camp looks like before the centre has registered them. Both fallbacks log once rather than silently doing nothing.
 
 ## Config
 
