@@ -72,10 +72,21 @@ _G.RegisterHook = function(path, pre, post) hooks[path] = { pre = pre, post = po
 _G.NotifyOnNewObject = function(classPath, cb) newObjectHooks[classPath] = cb end
 _G.RegisterCustomProperty = function() return true end
 _G.PropertyTypes = { Int64Property = 1 }
+local CAMP_CHEST_CLASS = "R5LootableInventoryBox"
+_G.__findAllCalls = _G.__findAllCalls or {}
 _G.FindAllOf = function(className)
+    _G.__findAllCalls[className] = (_G.__findAllCalls[className] or 0) + 1
     if className == "R5LootableInventoryBox" then return _G.__chests end
     if className == "R5BuildingBlock_BuildingCenter" then return _G.__centers or {} end
     return {}
+end
+
+local function resetSweeps()
+    _G.__findAllCalls = {}
+end
+
+local function chestSweeps()
+    return _G.__findAllCalls[CAMP_CHEST_CLASS] or 0
 end
 _G.ExecuteWithDelay = function(ms, fn) delays[#delays + 1] = { ms = ms, fn = fn } end
 _G.ExecuteInGameThread = function(fn) fn() end
@@ -165,8 +176,9 @@ local classesLine = flag("DEPOSIT_CLASSES_STALE")
     and 'depositOptionClasses = { R5Ability_InteractOption_DepositSimilarOld_C = true },'
     or ''
 cfg:write(string.format(
-    'return { enabled = true, debug = %s, runtimeLogging = true, replayMode = "unwrapped", debounceSeconds = 1.0, %s }',
-    flag("DEBUG") and "true" or "false", classesLine))
+    'return { enabled = true, debug = %s, runtimeLogging = true, replayMode = "unwrapped",'
+        .. ' debounceSeconds = 1.0, chestsPerTick = %s, %s }',
+    flag("DEBUG") and "true" or "false", os.getenv("CHESTS_PER_TICK") or "4", classesLine))
 cfg:close()
 
 local realPrint = print
@@ -240,6 +252,25 @@ local function interact(className, deltaSeconds)
 end
 
 --------------------------------------------------------------------- scenarios
+-- 0. Cost model. The perf report was "the server lags for a few seconds". What is
+--    provable without a server is the shape of the work: a blocked interaction
+--    must not sweep the chest list at all, and a deposit must sweep it once.
+resetSweeps()
+interact("R5Ability_InteractOption_ToggleDoor")
+check("a blocked interaction sweeps no chests", chestSweeps() == 0,
+    string.format("%d sweep(s)", chestSweeps()))
+
+resetSweeps()
+ascCalls = 0
+interact("GA_InteractOption_DepositSimilar_C")
+-- One sweep in production; a second only when debug logging asks describeCamp to
+-- count the camp's chests for the trace line.
+local expectedSweeps = flag("DEBUG") and 2 or 1
+check("a deposit sweeps the chest list once (twice with debug)", chestSweeps() == expectedSweeps,
+    string.format("%d sweep(s) for 1 deposit, expected %d", chestSweeps(), expectedSweeps))
+
+clock = clock + 2 -- clear the cooldown the check above just consumed
+
 -- 1. Deposit Similar: the only interaction that may fan out.
 _G.__writeLog, ascCalls = {}, 0
 local ok, err = interact("GA_InteractOption_DepositSimilar_C")
@@ -330,6 +361,47 @@ if flag("DEPOSIT_CLASSES_STALE") then
         string.format("%d warning(s) over 25 interactions, %d replays", warnings, ascCalls))
     return
 end
+
+-- 10. Warehouse scale: report #1 came from a base with ~122 chests. The total
+--     work of a genuine deposit is unchanged by frame slicing, so assert the
+--     bounds rather than a wall-clock time: capped replays, chunked, one sweep.
+local savedChests, savedCenters = _G.__chests, _G.__centers
+local warehouse = {}
+for i = 1, 122 do warehouse[i] = makeChest(i * 100, 0, 0, 1) end
+local allIds = {}
+for i = 1, 122 do allIds[i] = 1 end
+_G.__chests = warehouse
+_G.__centers = { obj({ StorageCenter = obj({
+    BuildingGraphIds = obj({ Contains = function(_, id) return allIds[id] == true end }),
+}) }) }
+_G.__chests[1] = warehouse[1]
+
+local chunks = 0
+local realDelay = delays
+delays = {}
+ascCalls = 0
+resetSweeps()
+constructOption("GA_InteractOption_DepositSimilar_C", playerState)
+hook.post({ get = function() return asc end }, structParam("handle"), structParam("origKey"),
+    structParam("targetData"), structParam("appTag"), structParam("predKey"))
+local cursor = 0
+while cursor < #delays and chunks < 50 do
+    cursor = cursor + 1
+    local d = delays[cursor]
+    if d.ms ~= 15000 then d.fn(); chunks = chunks + 1 end
+end
+delays = realDelay
+
+-- The first chunk runs inline inside the hook; the rest are deferred one frame
+-- each, so frames = ceil(replays / chestsPerTick).
+local perTick = tonumber(os.getenv("CHESTS_PER_TICK") or "4")
+local expectedFrames = math.ceil(16 / perTick)
+check("warehouse deposit is capped and chunked",
+    ascCalls == 16 and chestSweeps() == 1 and chunks == expectedFrames - 1,
+    string.format("%d replays over %d frames at %d/frame (1 inline + %d deferred), %d sweep(s) over 122 chests",
+        ascCalls, expectedFrames, perTick, chunks, chestSweeps()))
+
+_G.__chests, _G.__centers = savedChests, savedCenters
 
 --------------------------------------------------------------------- result
 local failed = 0

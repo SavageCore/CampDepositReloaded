@@ -669,7 +669,12 @@ local function runMultipass(asc, pAbilityHandle, pOrigKey, pTargetData, pAppTag,
     local comp = interactComponentOf(origin)
     local originAddr = addressOf(origin)
     if not comp then return bail("no-interact-component") end
-    trace("origin chest %.1fm from player, %s", originDist / 100.0, describeCamp(origin))
+    -- describeCamp walks the whole chest list again, so it must be behind the
+    -- debug check: as an argument it would be evaluated on every fan-out and the
+    -- string thrown away whenever logging is off, doubling the scan cost.
+    if config.debug then
+        trace("origin chest %.1fm from player, %s", originDist / 100.0, describeCamp(origin))
+    end
     local offsets = findOwnerOffsets(comp, originAddr)
     if #offsets == 0 then
         count("skip:no-owner-offset")

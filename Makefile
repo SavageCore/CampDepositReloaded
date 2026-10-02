@@ -2,6 +2,8 @@ INSTALL_DIR ?= $(HOME)/.local/share/Steam/steamapps/common/Windrose/R5/Binaries/
 # Harness switch: `make test DEPOSIT_CLASSES_STALE=1` simulates a game update that
 # renamed the Deposit Similar option, which must warn rather than go inert.
 DEPOSIT_CLASSES_STALE ?= 0
+# Other harness knobs: make test CHESTS_PER_TICK=1, make test DEBUG=0
+CHESTS_PER_TICK ?= 4
 
 MOD_NAME    := CampDepositReloaded
 BUILD_DIR   := build/$(MOD_NAME)
@@ -26,7 +28,7 @@ $(BUILD_DIR)/enabled.txt:
 # invariants, camp scoping and the stale-class warning.
 test: build
 	@mkdir -p build/harness/run
-	DEPOSIT_CLASSES_STALE=$(DEPOSIT_CLASSES_STALE) lua tests/harness.lua
+	DEPOSIT_CLASSES_STALE=$(DEPOSIT_CLASSES_STALE) CHESTS_PER_TICK=$(CHESTS_PER_TICK) lua tests/harness.lua
 
 install: build
 	@mkdir -p $(INSTALL_DIR)/$(MOD_NAME)/Scripts
